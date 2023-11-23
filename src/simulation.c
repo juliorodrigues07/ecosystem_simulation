@@ -102,20 +102,46 @@ void evolve_system (environment *config)
     }
 }
 
-void update_state (environment *config, cell **spaces)
+void print_limits (int n)
 {
-    for (int i = 0; i < config->r; i++)
+    for (int i = 0; i < n; i++)
+        printf("-");
+    printf("\n");
+}
+
+void print_state (environment *config, int gen)
+{
+    int object;
+    int header = 2 * config->c + 3;
+
+    printf("Gen %d\n", gen);
+    print_limits(header);
+
+    for (int x = 0; x < config->r; x++)
     {
-        for (int j = 0; j < config->c; j++)
+        printf("| ");
+        for (int y = 0; y < config->c; y++)
         {
-            if (config->spaces[i][j].type == 2)
-                spaces[i][j].age_rabbit = config->spaces[i][j].age_rabbit;
-            else if (config->spaces[i][j].type == 1)
+            object = config->spaces[x][y].type;
+            switch (object)
             {
-                spaces[i][j].age_fox = config->spaces[i][j].age_fox;
-                spaces[i][j].hunger_fox = config->spaces[i][j].hunger_fox;
+                case -1:
+                    printf("* ");
+                    break;
+                case 0:
+                    printf("  ");
+                    break;
+                case 1:
+                    printf("R ");
+                    break;
+                case 2:
+                    printf("C ");
+                    break;
+                default:
+                    break;
             }
-            spaces[i][j].type = config->spaces[i][j].type;
         }
+        printf("|\n");
     }
+    print_limits(header);
 }
