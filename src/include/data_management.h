@@ -8,5 +8,6 @@
 #include "common.h"
 
 environment *read_input_file(char *file_name);
+void print_result (environment *config);
 
 #endif

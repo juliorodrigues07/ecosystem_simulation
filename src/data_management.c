@@ -21,21 +21,58 @@ environment *read_input_file (char *file_name)
     unsigned int x, y;
     while (fscanf(input_file, "%s %u %u\n", object, &x, &y) != EOF)
     {
-        if (!strcmp("COELHO", object)) {
+        if (!strcmp("COELHO", object))
+        {
             config->spaces[x][y].type = 2;
             config->spaces[x][y].age_rabbit = 0;
         }
-        else if (!strcmp("RAPOSA", object)) {
+        else if (!strcmp("RAPOSA", object))
+        {
             config->spaces[x][y].type = 1;
             config->spaces[x][y].age_fox = 0;
             config->spaces[x][y].hunger_fox = 0;
         }
         else if (!strcmp("ROCHA", object))
             config->spaces[x][y].type = -1;
-        else
-            config->spaces[x][y].type = 0;
+    }
+
+    for (int x = 0; x < config->r; x++)
+    {
+        for (int y = 0; y < config->c; y++)
+        {
+            if (config->spaces[x][y].type != 1 && config->spaces[x][y].type != 2 && config->spaces[x][y].type != -1)
+                config->spaces[x][y].type = 0;
+        }
     }
 
     fclose(input_file);
     return config;
+}
+
+void print_result (environment *config)
+{
+    unsigned int total = 0;
+    for (int x = 0; x < config->r; x++)
+    {
+        for (int y = 0; y < config->c; y++)
+        {
+            if (config->spaces[x][y].type == -1 || config->spaces[x][y].type == 1 || config->spaces[x][y].type == 2)
+                total++;
+        }
+    }
+
+    printf("%u %u %u 0 %u %u %u\n", config->rabbit_gen, config->fox_gen, config->fox_food, config->r, config->c, total);
+
+    for (int x = 0; x < config->r; x++)
+    {
+        for (int y = 0; y < config->c; y++)
+        {
+            if (config->spaces[x][y].type == -1)
+                printf("ROCHA %d %d\n", x, y);
+            else if (config->spaces[x][y].type == 1)
+                printf("RAPOSA %d %d\n", x, y);
+            else if (config->spaces[x][y].type == 2)
+                printf("COELHO %d %d\n", x, y);
+        }
+    }
 }
