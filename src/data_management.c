@@ -25,6 +25,7 @@ environment *read_input_file (char *file_name)
         {
             config->spaces[x][y].type = 2;
             config->spaces[x][y].age_rabbit = 0;
+            config->spaces[x][y].hunger_fox = INT_MAX;
         }
         else if (!strcmp("RAPOSA", object))
         {
@@ -41,7 +42,11 @@ environment *read_input_file (char *file_name)
         for (int y = 0; y < config->c; y++)
         {
             if (config->spaces[x][y].type != 1 && config->spaces[x][y].type != 2 && config->spaces[x][y].type != -1)
+            {
                 config->spaces[x][y].type = 0;
+                config->spaces[x][y].age_rabbit = INT_MAX;
+                config->spaces[x][y].age_fox = INT_MAX;
+            }
         }
     }
 
