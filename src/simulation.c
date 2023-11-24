@@ -60,23 +60,51 @@ void move_rabbits (environment *config, cell **spaces, unsigned int g)
                 {
                     case 0:
                         spaces[north][y].type = config->spaces[x][y].type;
-                        spaces[north][y].age_rabbit = config->spaces[x][y].age_rabbit;
-                        spaces[x][y].type = 0;
+                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+                            spaces[north][y].age_rabbit = -1;
+                        else
+                            spaces[north][y].age_rabbit = MIN(spaces[north][y].age_rabbit, config->spaces[x][y].age_rabbit);
                         break;
                     case 1:
                         spaces[x][east].type = config->spaces[x][y].type;
-                        spaces[x][east].age_rabbit = config->spaces[x][y].age_rabbit;
-                        spaces[x][y].type = 0;
+                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+                            spaces[x][east].age_rabbit = -1;
+                        else
+                            spaces[x][east].age_rabbit = MIN(spaces[x][east].age_rabbit, config->spaces[x][y].age_rabbit);
                         break;
                     case 2:
                         spaces[south][y].type = config->spaces[x][y].type;
-                        spaces[south][y].age_rabbit = config->spaces[x][y].age_rabbit;
-                        spaces[x][y].type = 0;
+                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+                            spaces[south][y].age_rabbit = -1;
+                        else
+                            spaces[south][y].age_rabbit = MIN(spaces[south][y].age_rabbit, config->spaces[x][y].age_rabbit);
                         break;
                     case 3:
                         spaces[x][west].type = config->spaces[x][y].type;
-                        spaces[x][west].age_rabbit = config->spaces[x][y].age_rabbit;
-                        spaces[x][y].type = 0;
+                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+                            spaces[x][west].age_rabbit = -1;
+                        else
+                            spaces[x][west].age_rabbit = MIN(spaces[x][west].age_rabbit, config->spaces[x][y].age_rabbit);
+                        break;
+                    default:
+                        break;
+                }
+
+                switch (next_cell) {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+                        {
+                            spaces[x][y].age_rabbit = -1;
+                            spaces[x][y].type = 2;
+                        }
+                        else
+                        {
+                            spaces[x][y].type = 0;
+                            spaces[x][y].age_rabbit = INT_MAX;
+                        }
                         break;
                     default:
                         break;
@@ -84,6 +112,58 @@ void move_rabbits (environment *config, cell **spaces, unsigned int g)
             }
         }
     }
+}
+
+void copy_state (environment *config, cell **spaces)
+{
+    for (int i = 0; i < config->r; i++)
+    {
+        for (int j = 0; j < config->c; j++)
+        {
+            if (config->spaces[i][j].type == 2)
+                spaces[i][j].age_rabbit = config->spaces[i][j].age_rabbit;
+            else if (config->spaces[i][j].type == 1)
+            {
+                spaces[i][j].age_fox = config->spaces[i][j].age_fox;
+                spaces[i][j].hunger_fox = config->spaces[i][j].hunger_fox;
+            }
+            else if (config->spaces[i][j].type == 0 || config->spaces[i][j].type == -1)
+            {
+                spaces[i][j].age_rabbit = INT_MAX;
+                spaces[i][j].age_fox = INT_MAX;
+                spaces[i][j].hunger_fox = INT_MAX;
+            }
+            spaces[i][j].type = config->spaces[i][j].type;
+        }
+    }
+}
+
+void update_state (environment *config, cell **spaces)
+{
+    for (int i = 0; i < config->r; i++)
+    {
+        for (int j = 0; j < config->c; j++)
+        {
+            if (spaces[i][j].type == 2)
+            {
+                config->spaces[i][j].age_rabbit = spaces[i][j].age_rabbit;
+                config->spaces[i][j].hunger_fox = INT_MAX;
+            }
+            else if (spaces[i][j].type == 1)
+            {
+                config->spaces[i][j].age_fox = spaces[i][j].age_fox;
+                config->spaces[i][j].hunger_fox = spaces[i][j].hunger_fox;
+            }
+            else if (spaces[i][j].type == 0)
+            {
+                config->spaces[i][j].age_rabbit = INT_MAX;
+                config->spaces[i][j].age_fox = INT_MAX;
+                config->spaces[i][j].hunger_fox = INT_MAX;
+            }
+            config->spaces[i][j].type = spaces[i][j].type;
+        }
+    }
+    printf("\n");
 }
 
 void evolve_system (environment *config)
