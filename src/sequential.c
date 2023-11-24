@@ -1,57 +1,44 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "include/data_management.h"
+#include "include/simulation.h"
 
-typedef struct element {
-	char object[6];
-	int x;
-	int y;
-} element;
+int main (int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        fprintf(stderr, "Incorrect number of arguments.\n");
+        fprintf(stderr, "Usage: %s <path/to/file>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-int main(int argc, char **argv) {
-	
-	char object[6];
-	int x, y;
-	int gen_food_fox;
-	int gen_rep_rabbit, gen_rep_fox;
-	int n_gen, r, c, n;
-	 
-	FILE *fp = fopen("../instances/test.txt", "r");
-	if (fp == NULL) {
-		printf("Failed opening file\n");
-		exit(EXIT_FAILURE);
-	}
-	
-	fscanf(fp, "%d %d %d %d %d %d %d\n", &gen_rep_rabbit, &gen_rep_fox, &gen_food_fox, &n_gen, &r, &c, &n);
-	element *elements = (element *) malloc (n * sizeof(element));
-	for (int i = 0; i < n; i++) {
-		fscanf(fp, "%s %d %d\n", object, &x, &y);
-		strcpy(elements[i].object, object);
-		elements[i].x = x;
-		elements[i].y = y;
-	}
-	fclose(fp);
-	
-	printf("%d %d %d %d %d %d %d\n", gen_rep_rabbit, gen_rep_fox, gen_food_fox, n_gen, r, c, n);
-	for (int i = 0; i < n; i++) 
-		printf("%s %d %d\n", elements[i].object, elements[i].x, elements[i].y);
-		
-	int **env = calloc(r, sizeof(int *));
-	for (int i = 0; i < r; i++)
-		env[i] = calloc (c, sizeof(int));
-		
-	for (int i = 0; i < n; i++)
-		if (!strcmp("RAPOSA", elements[i].object))
-			env[elements[i].x][elements[i].y] = 3;
-		else if (!strcmp("COELHO", elements[i].object))
-			env[elements[i].x][elements[i].y] = 2;
-		else 
-			env[elements[i].x][elements[i].y] = 1;
-			
-	for (int i = 0; i < r; i++) {
-		for (int j = 0; j < r; j++)
-			printf("%d\t", env[i][j]);
-		printf("\n");
-	}
-	return 0;
+    char *file_name = argv[1];
+    environment *config = read_input_file(file_name);
+
+    cell **space_copy = (cell **) malloc (config->r * sizeof(cell *));
+    for (int i = 0; i < config->r; i++)
+        space_copy[i] = (cell *) malloc (config->c * sizeof(cell));
+    copy_state(config, space_copy);
+
+//    print_state(config, 0);
+    for (int i = 0; i < config->n_gen; i++)
+    {
+        move_rabbits(config, space_copy, i);
+        update_state(config, space_copy);
+        move_foxes(config, space_copy, i);
+        update_state(config, space_copy);
+        evolve_system(config);
+        copy_state(config, space_copy);
+//        print_state(config, i + 1);
+    }
+    print_result(config);
+
+    // Clean up
+    for (int i = 0; i < config->r; i++)
+    {
+        free(config->spaces[i]);
+        free(space_copy[i]);
+    }
+    free(config->spaces);
+    free(space_copy);
+    free(config);
+    return 0;
 }
