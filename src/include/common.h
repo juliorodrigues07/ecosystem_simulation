@@ -4,6 +4,10 @@
 #include <limits.h>
 
 #define FOREVER INT_MAX
+#define RABBIT 2
+#define FOX 1
+#define EMPTY 0
+#define STONE -1
 
 typedef struct cell {
     int type;
