@@ -1,15 +1,24 @@
 all: data_management.o simulation.o
-	gcc data_management.o simulation.o src/include/common.h src/sequential.c -o main
+	gcc -Wall data_management.o simulation.o src/include/common.h src/sequential.c -o main -lgomp
 
 data_management.o: src/include/data_management.h
 	gcc -c src/data_management.c
 
 simulation.o: src/include/simulation.h
-	gcc -c src/simulation.c
+	gcc -c -fopenmp src/simulation.c
 
 clean:
-	rm -rf *.o
-	rm -rf main
+	rm -rf *.o *.out *.output
+	rm -rf main sequential
 
-run:
+sequential:
+	gcc -Wall src/sequential.c src/data_management.c src/simulation.c -fno-openmp -o sequential
+	./sequential instances/test.txt
+
+with_prof:
+	gcc -Wall src/sequential.c src/data_management.c src/simulation.c -fno-openmp -xpg -p -o sequential
+	./sequential instances/instance_3.txt
+	gprof sequential > report.output
+
+parallel:
 	./main instances/test.txt
