@@ -1,5 +1,4 @@
 #include "include/data_management.h"
-#include "include/common.h"
 
 environment *read_input_file (char *file_name)
 {
@@ -11,7 +10,8 @@ environment *read_input_file (char *file_name)
     }
 
     environment *config = (environment *) malloc (1 * sizeof(environment));
-    fscanf(input_file, "%u %u %u %u %u %u %u\n", &config->rabbit_gen, &config->fox_gen, &config->fox_food, &config->n_gen, &config->r, &config->c, &config->n);
+    fscanf(input_file, "%u %u %u %u %u %u %u\n", &config->rabbit_gen, &config->fox_gen, &config->fox_food,
+           &config->n_gen, &config->r, &config->c, &config->n);
 
     config->spaces = (cell **) malloc (config->r * sizeof(cell *));
     for (int i = 0; i < config->r; i++)
@@ -54,7 +54,7 @@ environment *read_input_file (char *file_name)
     return config;
 }
 
-void print_result (environment *config)
+void print_result (environment *config, unsigned int gens)
 {
     unsigned int total = 0;
     for (int x = 0; x < config->r; x++)
@@ -66,7 +66,7 @@ void print_result (environment *config)
         }
     }
 
-    printf("%u %u %u 0 %u %u %u\n", config->rabbit_gen, config->fox_gen, config->fox_food, config->r, config->c, total);
+    printf("%u %u %u %u %u %u %u\n", config->rabbit_gen, config->fox_gen, config->fox_food, gens, config->r, config->c, total);
 
     for (int x = 0; x < config->r; x++)
     {
