@@ -1,3 +1,5 @@
+#include <omp.h>
+#include <time.h>
 #include "include/simulation.h"
 
 void enumerate_positions (int *adj, int value) 
@@ -12,7 +14,8 @@ void enumerate_positions (int *adj, int value)
     }
 }
 
-void empty_cells (int x, int y, int north, int south, int east, int west, environment *config, int *adj, int *available, int type)
+void empty_cells (int x, int y, int north, int south, int east, int west,
+                  environment *config, int *adj, int *available, int type)
 {
     if (north >= 0 && north < config->r && config->spaces[north][y].type == type)
     {
@@ -36,7 +39,8 @@ void empty_cells (int x, int y, int north, int south, int east, int west, enviro
     }
 }
 
-void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int orientation, int type, bool vertical)
+void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
+                         int orientation, int type, bool vertical)
 {
     if (vertical)
     {
@@ -44,7 +48,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
         {
             spaces[orientation][y].type = config->spaces[x][y].type;
             spaces[orientation][y].hunger_fox = config->spaces[x][y].hunger_fox;
-            if (config->spaces[x][y].age_fox == config->fox_gen)
+            if (config->spaces[x][y].age_fox >= config->fox_gen)
                 spaces[orientation][y].age_fox = -1;
             else
                 spaces[orientation][y].age_fox = MIN(spaces[orientation][y].age_fox, config->spaces[x][y].age_fox);
@@ -52,7 +56,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
         else
         {
             spaces[orientation][y].type = config->spaces[x][y].type;
-            if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+            if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
                 spaces[orientation][y].age_rabbit = -1;
             else
                 spaces[orientation][y].age_rabbit = MIN(spaces[orientation][y].age_rabbit, config->spaces[x][y].age_rabbit);
@@ -64,7 +68,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
         {
             spaces[x][orientation].type = config->spaces[x][y].type;
             spaces[x][orientation].hunger_fox = config->spaces[x][y].hunger_fox;
-            if (config->spaces[x][y].age_fox == config->fox_gen)
+            if (config->spaces[x][y].age_fox >= config->fox_gen)
                 spaces[x][orientation].age_fox = -1;
             else
                 spaces[x][orientation].age_fox = MIN(spaces[x][orientation].age_fox, config->spaces[x][y].age_fox);
@@ -72,7 +76,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
         else
         {
             spaces[x][orientation].type = config->spaces[x][y].type;
-            if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+            if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
                 spaces[x][orientation].age_rabbit = -1;
             else
                 spaces[x][orientation].age_rabbit = MIN(spaces[x][orientation].age_rabbit, config->spaces[x][y].age_rabbit);
@@ -81,7 +85,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
 
     if (type == 1)
     {
-        if (config->spaces[x][y].age_fox == config->fox_gen)
+        if (config->spaces[x][y].age_fox >= config->fox_gen)
         {
             spaces[x][y].age_fox = -1;
             spaces[x][y].hunger_fox = -1;
@@ -96,7 +100,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
     }
     else
     {
-        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
+        if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
         {
             spaces[x][y].age_rabbit = -1;
             spaces[x][y].type = RABBIT;
@@ -112,66 +116,54 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y, int o
 
 void move_rabbits (environment *config, cell **spaces, unsigned int g)
 {
-    int available;
+    int x, y, i;
+    int adj[4];
     int north, south, east, west;
+    int available, index, next_cell;
+    int chunk = config->r * config->c / N_THREADS;
 
-    for (int x = 0; x < config->r; x++)
+    #pragma omp parallel num_threads(N_THREADS) private(x, y, i, north, south, east, west, available, adj, index, next_cell)
     {
-        north = x - 1;
-        south = x + 1;
-
-        for (int y = 0; y < config->c; y++)
+        #pragma omp for schedule(dynamic, chunk) nowait
+        for (x = 0; x < config->r; x++)
         {
-            int adj[] = {-1, -1, -1, -1};
-            available = 0;
-            east = y + 1;
-            west = y - 1;
+            north = x - 1;
+            south = x + 1;
 
-            if (config->spaces[x][y].type == RABBIT)
-                empty_cells(x, y, north, south, east, west, config, adj, &available, 0);
-
-            if (available > 0)
+            for (y = 0; y < config->c; y++)
             {
-                int index = (g + x + y) % available;
-                int next_cell = adj[index];
+                for (i = 0; i < 4; i++)
+                    adj[i] = -1;
+                available = 0;
+                east = y + 1;
+                west = y - 1;
 
-                switch (next_cell)
+                if (config->spaces[x][y].type == RABBIT)
+                    empty_cells(x, y, north, south, east, west, config, adj, &available, 0);
+
+                if (available > 0)
                 {
-                    case 0:
-                        move_animal_to_adj(config, spaces, x, y, north, RABBIT, true);
-                        break;
-                    case 1:
-                        move_animal_to_adj(config, spaces, x, y, east, RABBIT, false);
-                        break;
-                    case 2:
-                        move_animal_to_adj(config, spaces, x, y, south, RABBIT, true);
-                        break;
-                    case 3:
-                        move_animal_to_adj(config, spaces, x, y, west, RABBIT, false);
-                        break;
-                    default:
-                        break;
-                }
+                    index = (g + x + y) % available;
+                    next_cell = adj[index];
 
-//                switch (next_cell) {
-//                    case 0:
-//                    case 1:
-//                    case 2:
-//                    case 3:
-//                        if (config->spaces[x][y].age_rabbit == config->rabbit_gen)
-//                        {
-//                            spaces[x][y].age_rabbit = -1;
-//                            spaces[x][y].type = RABBIT;
-//                        }
-//                        else
-//                        {
-//                            spaces[x][y].type = EMPTY;
-//                            spaces[x][y].age_rabbit = FOREVER;
-//                        }
-//                        break;
-//                    default:
-//                        break;
-//                }
+                    switch (next_cell)
+                    {
+                        case 0:
+                            move_animal_to_adj(config, spaces, x, y, north, RABBIT, true);
+                            break;
+                        case 1:
+                            move_animal_to_adj(config, spaces, x, y, east, RABBIT, false);
+                            break;
+                        case 2:
+                            move_animal_to_adj(config, spaces, x, y, south, RABBIT, true);
+                            break;
+                        case 3:
+                            move_animal_to_adj(config, spaces, x, y, west, RABBIT, false);
+                            break;
+                        default:
+                            break;
+                    }
+                }
             }
         }
     }
@@ -179,110 +171,97 @@ void move_rabbits (environment *config, cell **spaces, unsigned int g)
 
 void move_foxes (environment *config, cell **spaces, unsigned int g)
 {
-    int available_to_eat, empty;
+    int eat[4], adj[4];
+    int x, y, i;
+    int available_to_eat, empty, index, next_cell;
     int north, south, east, west;
+    int chunk = config->r * config->c / N_THREADS;
 
-    for (int x = 0; x < config->r; x++)
+    #pragma omp parallel num_threads(N_THREADS) private(x, y, i, north, south, east, west, available_to_eat, eat, adj, empty, index, next_cell)
     {
-        north = x - 1;
-        south = x + 1;
-
-        for (int y = 0; y < config->c; y++)
+        #pragma omp for schedule(dynamic, chunk) nowait
+        for (x = 0; x < config->r; x++)
         {
-            int eat[] = {-1, -1, -1, -1};
-            int adj[] = {-1, -1, -1, -1};
-            available_to_eat = 0;
-            empty = 0;
-            east = y + 1;
-            west = y - 1;
+            north = x - 1;
+            south = x + 1;
 
-            if (config->spaces[x][y].type == FOX)
+            for (y = 0; y < config->c; y++)
             {
-                empty_cells(x, y, north, south, east, west, config, eat, &available_to_eat, RABBIT);
-                empty_cells(x, y, north, south, east, west, config, adj, &empty, EMPTY);
-            }
-
-            int index, next_cell;
-            if (available_to_eat > 0)
-            {
-                index = (g + x + y) % available_to_eat;
-                next_cell = eat[index];
-
-                switch (next_cell) {
-                    case 0:
-                        spaces[north][y].hunger_fox = 0;
-                        move_animal_to_adj(config, spaces, x, y, north, FOX, true);
-                        break;
-                    case 1:
-                        spaces[x][east].hunger_fox = 0;
-                        move_animal_to_adj(config, spaces, x, y, east, FOX, false);
-                        break;
-                    case 2:
-                        spaces[south][y].hunger_fox = 0;
-                        move_animal_to_adj(config, spaces, x, y, south, FOX, true);
-                        break;
-                    case 3:
-                        spaces[x][west].hunger_fox = 0;
-                        move_animal_to_adj(config, spaces, x, y, west, FOX, false);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            else if (empty > 0)
-            {
-                index = (g + x + y) % empty;
-                next_cell = adj[index];
-
-                switch (next_cell)
+                for (i = 0; i < 4; i++)
                 {
-                    case 0:
-                        move_animal_to_adj(config, spaces, x, y, north, FOX, true);
-                        break;
-                    case 1:
-                        move_animal_to_adj(config, spaces, x, y, east, FOX, false);
-                        break;
-                    case 2:
-                        move_animal_to_adj(config, spaces, x, y, south, FOX, true);
-                        break;
-                    case 3:
-                        move_animal_to_adj(config, spaces, x, y, west, FOX, false);
-                        break;
-                    default:
-                        break;
+                    eat[i] = -1;
+                    adj[i] = -1;
+                }
+
+                available_to_eat = 0;
+                empty = 0;
+                east = y + 1;
+                west = y - 1;
+
+                if (config->spaces[x][y].type == FOX)
+                {
+                    empty_cells(x, y, north, south, east, west, config, eat, &available_to_eat, RABBIT);
+                    if (eat[0] == -1)
+                        empty_cells(x, y, north, south, east, west, config, adj, &empty, EMPTY);
+                }
+
+                if (available_to_eat > 0)
+                {
+                    index = (g + x + y) % available_to_eat;
+                    next_cell = eat[index];
+
+                    switch (next_cell) {
+                        case 0:
+                            move_animal_to_adj(config, spaces, x, y, north, FOX, true);
+                            spaces[north][y].hunger_fox = -1;
+                            break;
+                        case 1:
+                            move_animal_to_adj(config, spaces, x, y, east, FOX, false);
+                            spaces[x][east].hunger_fox = -1;
+                            break;
+                        case 2:
+                            move_animal_to_adj(config, spaces, x, y, south, FOX, true);
+                            spaces[south][y].hunger_fox = -1;
+                            break;
+                        case 3:
+                            move_animal_to_adj(config, spaces, x, y, west, FOX, false);
+                            spaces[x][west].hunger_fox = -1;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else if (empty > 0)
+                {
+                    index = (g + x + y) % empty;
+                    next_cell = adj[index];
+
+                    switch (next_cell)
+                    {
+                        case 0:
+                            move_animal_to_adj(config, spaces, x, y, north, FOX, true);
+                            break;
+                        case 1:
+                            move_animal_to_adj(config, spaces, x, y, east, FOX, false);
+                            break;
+                        case 2:
+                            move_animal_to_adj(config, spaces, x, y, south, FOX, true);
+                            break;
+                        case 3:
+                            move_animal_to_adj(config, spaces, x, y, west, FOX, false);
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
-
-//            if (available_to_eat > 0 || empty > 0)
-//            {
-//                switch (next_cell) {
-//                    case 0:
-//                    case 1:
-//                    case 2:
-//                    case 3:
-//                        if (config->spaces[x][y].age_fox == config->fox_gen)
-//                        {
-//                            spaces[x][y].age_fox = -1;
-//                            spaces[x][y].hunger_fox = -1;
-//                            spaces[x][y].type = FOX;
-//                        }
-//                        else
-//                        {
-//                            spaces[x][y].type = EMPTY;
-//                            spaces[x][y].age_fox = FOREVER;
-//                            spaces[x][y].hunger_fox = FOREVER;
-//                        }
-//                        break;
-//                    default:
-//                        break;
-//                }
-//            }
         }
     }
 }
 
 void copy_state (environment *config, cell **spaces)
 {
+    #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
         for (int j = 0; j < config->c; j++)
@@ -307,22 +286,17 @@ void copy_state (environment *config, cell **spaces)
 
 void update_state (environment *config, cell **spaces)
 {
+    #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
-        for (int j = 0; j < config->c; j++)
-        {
-            if (spaces[i][j].type == RABBIT)
-            {
+        for (int j = 0; j < config->c; j++) {
+            if (spaces[i][j].type == RABBIT) {
                 config->spaces[i][j].age_rabbit = spaces[i][j].age_rabbit;
                 config->spaces[i][j].hunger_fox = FOREVER;
-            }
-            else if (spaces[i][j].type == FOX)
-            {
+            } else if (spaces[i][j].type == FOX) {
                 config->spaces[i][j].age_fox = spaces[i][j].age_fox;
                 config->spaces[i][j].hunger_fox = spaces[i][j].hunger_fox;
-            }
-            else if (spaces[i][j].type == STONE)
-            {
+            } else if (spaces[i][j].type == STONE) {
                 config->spaces[i][j].age_rabbit = FOREVER;
                 config->spaces[i][j].age_fox = FOREVER;
                 config->spaces[i][j].hunger_fox = FOREVER;
@@ -334,13 +308,15 @@ void update_state (environment *config, cell **spaces)
 
 void evolve_system (environment *config)
 {
+    #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
         for (int j = 0; j < config->c; j++)
         {
             if (config->spaces[i][j].type == RABBIT)
                 config->spaces[i][j].age_rabbit++;
-            else if (config->spaces[i][j].type == FOX) {
+            else if (config->spaces[i][j].type == FOX)
+            {
                 config->spaces[i][j].age_fox++;
                 config->spaces[i][j].hunger_fox++;
                 if (config->spaces[i][j].hunger_fox >= config->fox_food)
@@ -370,14 +346,11 @@ void print_state (environment *config, unsigned int gen)
     printf("\nGen %d\n", gen);
     print_limits(header);
 
-    for (int x = 0; x < config->r; x++)
-    {
+    for (int x = 0; x < config->r; x++) {
         printf("| ");
-        for (int y = 0; y < config->c; y++)
-        {
+        for (int y = 0; y < config->c; y++) {
             object = config->spaces[x][y].type;
-            switch (object)
-            {
+            switch (object) {
                 case STONE:
                     printf("* ");
                     break;
