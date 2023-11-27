@@ -2,8 +2,14 @@
 #include <time.h>
 #include "include/simulation.h"
 
+int calculate_next_position (int g, int x, int y, int p)
+{
+    return (g + x + y) % p;
+}
+
 void enumerate_positions (int *adj, int value) 
 {
+    // Enumerates starting from north the possible movement positions {0, 1, 2, 3} ==> {N, E, S, W}
     for (int i = 0; i < 4; i++) 
     {
         if (adj[i] == -1) 
@@ -15,8 +21,9 @@ void enumerate_positions (int *adj, int value)
 }
 
 void empty_cells (int x, int y, int north, int south, int east, int west,
-                  environment *config, int *adj, int *available, int type)
+                  environment *config, int *adj, unsigned int *available, int type)
 {
+    // Checks if the adjacent cell is in bounds and its type to evaluate movement
     if (north >= 0 && north < config->r && config->spaces[north][y].type == type)
     {
         enumerate_positions(adj, 0);
@@ -42,18 +49,24 @@ void empty_cells (int x, int y, int north, int south, int east, int west,
 void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
                          int orientation, int type, bool vertical)
 {
+    // If the movement is in the vertical, performs operations only on the matrix x coordinate (row)
     if (vertical)
     {
-        if (type == 1)
+        if (type == FOX)
         {
+            // The stats of the current analyzed animal are transferred for the adjacent cell in the ecosystem
             spaces[orientation][y].type = config->spaces[x][y].type;
             spaces[orientation][y].hunger_fox = config->spaces[x][y].hunger_fox;
+
+            // If the fox survive enough generations, it can reproduce once in a period of time (fox_gen)
             if (config->spaces[x][y].age_fox >= config->fox_gen)
                 spaces[orientation][y].age_fox = -1;
+
+            // If two or more foxes try to move to the same cell, only the younger is kept in the ecosystem
             else
                 spaces[orientation][y].age_fox = MIN(spaces[orientation][y].age_fox, config->spaces[x][y].age_fox);
         }
-        else
+        else if (type == RABBIT)
         {
             spaces[orientation][y].type = config->spaces[x][y].type;
             if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
@@ -62,9 +75,10 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
                 spaces[orientation][y].age_rabbit = MIN(spaces[orientation][y].age_rabbit, config->spaces[x][y].age_rabbit);
         }
     }
+    // Same operations but in the y coordinate (horizontal - columns)
     else
     {
-        if (type == 1)
+        if (type == FOX)
         {
             spaces[x][orientation].type = config->spaces[x][y].type;
             spaces[x][orientation].hunger_fox = config->spaces[x][y].hunger_fox;
@@ -73,7 +87,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
             else
                 spaces[x][orientation].age_fox = MIN(spaces[x][orientation].age_fox, config->spaces[x][y].age_fox);
         }
-        else
+        else if (type == RABBIT)
         {
             spaces[x][orientation].type = config->spaces[x][y].type;
             if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
@@ -83,14 +97,24 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
         }
     }
 
-    if (type == 1)
+    /*
+    PS: When an iteration (generation of the ecosystem) passes and the age and hunger stats are set to -1,
+    the evolve_system function call will increment all stats by 1 before the next iteration. Also, the
+    comparisons are always done in the ecosystem source matrix, while the movements are all done in the
+    auxiliary matrix to solve any conflicts and to don't interfere with the system's dynamics
+    (all animals from each type move at the same time)
+    */
+    if (type == FOX)
     {
+        // If the fox reproduces, it leaves a child in the cell it just left that has its age and hunger set to zero
         if (config->spaces[x][y].age_fox >= config->fox_gen)
         {
+            // Foxes children don't inherit its hunger current state
             spaces[x][y].age_fox = -1;
             spaces[x][y].hunger_fox = -1;
             spaces[x][y].type = FOX;
         }
+        // Otherwise, the place in the ecosystem is left empty with no animal stats
         else
         {
             spaces[x][y].type = EMPTY;
@@ -98,7 +122,7 @@ void move_animal_to_adj (environment *config, cell **spaces, int x, int y,
             spaces[x][y].hunger_fox = FOREVER;
         }
     }
-    else
+    else if (type == RABBIT)
     {
         if (config->spaces[x][y].age_rabbit >= config->rabbit_gen)
         {
@@ -119,12 +143,13 @@ void move_rabbits (environment *config, cell **spaces, unsigned int g)
     int x, y, i;
     int adj[4];
     int north, south, east, west;
-    int available, index, next_cell;
-    int chunk = config->r * config->c / N_THREADS;
+    unsigned int available, index, next_cell;
+    int chunk;
 
     #pragma omp parallel num_threads(N_THREADS) private(x, y, i, north, south, east, west, available, adj, index, next_cell)
     {
-        #pragma omp for schedule(dynamic, chunk) nowait
+        chunk = config->r * config->c / N_THREADS;
+        #pragma omp for schedule(static, chunk)
         for (x = 0; x < config->r; x++)
         {
             north = x - 1;
@@ -138,26 +163,32 @@ void move_rabbits (environment *config, cell **spaces, unsigned int g)
                 east = y + 1;
                 west = y - 1;
 
+                // Enumerates the possible positions to move and stores them in the adj array (if any exists)
                 if (config->spaces[x][y].type == RABBIT)
                     empty_cells(x, y, north, south, east, west, config, adj, &available, 0);
 
+                // If there's any empty adjacent cell
                 if (available > 0)
                 {
-                    index = (g + x + y) % available;
+                    // (G + X + Y) (mod P)
+                    index = calculate_next_position(g, x, y, available);
+
+                    // e.g., [EAST, WEST, -1, -1] ==> adj[1] = WEST
                     next_cell = adj[index];
 
+                    #pragma omp critical
                     switch (next_cell)
                     {
-                        case 0:
+                        case NORTH:
                             move_animal_to_adj(config, spaces, x, y, north, RABBIT, true);
                             break;
-                        case 1:
+                        case EAST:
                             move_animal_to_adj(config, spaces, x, y, east, RABBIT, false);
                             break;
-                        case 2:
+                        case SOUTH:
                             move_animal_to_adj(config, spaces, x, y, south, RABBIT, true);
                             break;
-                        case 3:
+                        case WEST:
                             move_animal_to_adj(config, spaces, x, y, west, RABBIT, false);
                             break;
                         default:
@@ -173,13 +204,13 @@ void move_foxes (environment *config, cell **spaces, unsigned int g)
 {
     int eat[4], adj[4];
     int x, y, i;
-    int available_to_eat, empty, index, next_cell;
+    unsigned int available_to_eat, empty, index, next_cell;
     int north, south, east, west;
     int chunk = config->r * config->c / N_THREADS;
 
     #pragma omp parallel num_threads(N_THREADS) private(x, y, i, north, south, east, west, available_to_eat, eat, adj, empty, index, next_cell)
     {
-        #pragma omp for schedule(dynamic, chunk) nowait
+        #pragma omp for schedule(static, chunk)
         for (x = 0; x < config->r; x++)
         {
             north = x - 1;
@@ -201,29 +232,34 @@ void move_foxes (environment *config, cell **spaces, unsigned int g)
                 if (config->spaces[x][y].type == FOX)
                 {
                     empty_cells(x, y, north, south, east, west, config, eat, &available_to_eat, RABBIT);
+
+                    // If there isn't any rabbits nearby, then the fox tries to look for empty adjacent cells
                     if (eat[0] == -1)
                         empty_cells(x, y, north, south, east, west, config, adj, &empty, EMPTY);
                 }
 
+                // If there's at least one adjacent rabbit to eat
                 if (available_to_eat > 0)
                 {
-                    index = (g + x + y) % available_to_eat;
+                    index = calculate_next_position(g, x, y, available_to_eat);
                     next_cell = eat[index];
 
+                    #pragma omp critical
                     switch (next_cell) {
-                        case 0:
+                        case NORTH:
                             move_animal_to_adj(config, spaces, x, y, north, FOX, true);
+                            // The fox hunger status is decreased to zero (just ate a rabbit)
                             spaces[north][y].hunger_fox = -1;
                             break;
-                        case 1:
+                        case EAST:
                             move_animal_to_adj(config, spaces, x, y, east, FOX, false);
                             spaces[x][east].hunger_fox = -1;
                             break;
-                        case 2:
+                        case SOUTH:
                             move_animal_to_adj(config, spaces, x, y, south, FOX, true);
                             spaces[south][y].hunger_fox = -1;
                             break;
-                        case 3:
+                        case WEST:
                             move_animal_to_adj(config, spaces, x, y, west, FOX, false);
                             spaces[x][west].hunger_fox = -1;
                             break;
@@ -231,23 +267,25 @@ void move_foxes (environment *config, cell **spaces, unsigned int g)
                             break;
                     }
                 }
+                // Otherwise, if there's any empty adjacent cell to move
                 else if (empty > 0)
                 {
-                    index = (g + x + y) % empty;
+                    index = calculate_next_position(g, x, y, empty);
                     next_cell = adj[index];
 
+                    #pragma omp critical
                     switch (next_cell)
                     {
-                        case 0:
+                        case NORTH:
                             move_animal_to_adj(config, spaces, x, y, north, FOX, true);
                             break;
-                        case 1:
+                        case EAST:
                             move_animal_to_adj(config, spaces, x, y, east, FOX, false);
                             break;
-                        case 2:
+                        case SOUTH:
                             move_animal_to_adj(config, spaces, x, y, south, FOX, true);
                             break;
-                        case 3:
+                        case WEST:
                             move_animal_to_adj(config, spaces, x, y, west, FOX, false);
                             break;
                         default:
@@ -261,6 +299,7 @@ void move_foxes (environment *config, cell **spaces, unsigned int g)
 
 void copy_state (environment *config, cell **spaces)
 {
+    // Copies the ecosystem current state to the auxiliary matrix
     #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
@@ -286,17 +325,24 @@ void copy_state (environment *config, cell **spaces)
 
 void update_state (environment *config, cell **spaces)
 {
+    // Updates the ecosystem state with the recent modifications done in the auxiliary matrix
     #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
-        for (int j = 0; j < config->c; j++) {
-            if (spaces[i][j].type == RABBIT) {
+        for (int j = 0; j < config->c; j++)
+        {
+            if (spaces[i][j].type == RABBIT)
+            {
                 config->spaces[i][j].age_rabbit = spaces[i][j].age_rabbit;
                 config->spaces[i][j].hunger_fox = FOREVER;
-            } else if (spaces[i][j].type == FOX) {
+            }
+            else if (spaces[i][j].type == FOX)
+            {
                 config->spaces[i][j].age_fox = spaces[i][j].age_fox;
                 config->spaces[i][j].hunger_fox = spaces[i][j].hunger_fox;
-            } else if (spaces[i][j].type == STONE) {
+            }
+            else if (spaces[i][j].type == STONE)
+            {
                 config->spaces[i][j].age_rabbit = FOREVER;
                 config->spaces[i][j].age_fox = FOREVER;
                 config->spaces[i][j].hunger_fox = FOREVER;
@@ -308,6 +354,7 @@ void update_state (environment *config, cell **spaces)
 
 void evolve_system (environment *config)
 {
+    // Ages all the animals in the ecosystem (and its hunger if it's a fox)
     #pragma omp parallel for num_threads(N_THREADS)
     for (int i = 0; i < config->r; i++)
     {
@@ -319,6 +366,8 @@ void evolve_system (environment *config)
             {
                 config->spaces[i][j].age_fox++;
                 config->spaces[i][j].hunger_fox++;
+
+                // Eliminates foxes whose starved in the ecosystem
                 if (config->spaces[i][j].hunger_fox >= config->fox_food)
                 {
                     config->spaces[i][j].type = EMPTY;

@@ -25,7 +25,7 @@ environment *read_input_file (char *file_name)
         {
             config->spaces[x][y].type = RABBIT;
             config->spaces[x][y].age_rabbit = 0;
-            config->spaces[x][y].hunger_fox = INT_MAX;
+            config->spaces[x][y].hunger_fox = FOREVER;
         }
         else if (!strcmp("RAPOSA", object))
         {
@@ -41,11 +41,11 @@ environment *read_input_file (char *file_name)
     {
         for (int y = 0; y < config->c; y++)
         {
-            if (config->spaces[x][y].type != 1 && config->spaces[x][y].type != 2 && config->spaces[x][y].type != -1)
+            if (config->spaces[x][y].type != FOX && config->spaces[x][y].type != RABBIT && config->spaces[x][y].type != STONE)
             {
                 config->spaces[x][y].type = EMPTY;
-                config->spaces[x][y].age_rabbit = INT_MAX;
-                config->spaces[x][y].age_fox = INT_MAX;
+                config->spaces[x][y].age_rabbit = FOREVER;
+                config->spaces[x][y].age_fox = FOREVER;
             }
         }
     }
@@ -61,13 +61,14 @@ void print_result (environment *config, unsigned int gens)
     {
         for (int y = 0; y < config->c; y++)
         {
+            // Counts the total of objects present in the ecosystem
             if (config->spaces[x][y].type == STONE || config->spaces[x][y].type == FOX || config->spaces[x][y].type == RABBIT)
                 total++;
         }
     }
 
+    // Prints the final ecosystem state
     printf("%u %u %u %u %u %u %u\n", config->rabbit_gen, config->fox_gen, config->fox_food, gens, config->r, config->c, total);
-
     for (int x = 0; x < config->r; x++)
     {
         for (int y = 0; y < config->c; y++)

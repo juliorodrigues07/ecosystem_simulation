@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-environment *read_input_file(char *file_name);
+environment *read_input_file (char *file_name);
 void print_result (environment *config, unsigned int gens);
 
 #endif
