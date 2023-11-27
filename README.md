@@ -4,7 +4,15 @@ Parallel implementation in shared memory environments of a simple ecosystem base
 
 # Requirements
 
-- [GCC](https://gcc.gnu.org/onlinedocs/gcc-12.2.0/gcc/) compiler, [OpenMP](https://www.openmp.org/) library and [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html) tool;
+- [GCC](https://gcc.gnu.org/onlinedocs/gcc-12.2.0/gcc/) compiler:
+
+      sudo apt install gcc
+  
+- [OpenMP](https://www.openmp.org/) library:
+
+      sudo apt install libomp-dev
+
+- [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html) tool;
 
 - To install all dependencies:
 
