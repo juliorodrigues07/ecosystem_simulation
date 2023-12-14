@@ -49,6 +49,10 @@ def help(args):
         exit(127)
 
 
+def gen_random_coords(r, c):
+    return randint(0, r - 1), randint(0, c - 1)
+
+
 def generate_instances():
 
     argpar = ArgumentParser()
@@ -80,22 +84,19 @@ def generate_instances():
         instance_file.write(f'{args["genrabbit"]} {args["genfox"]} {args["hunger"]} {args["ngen"]} {r} {c} {n_rabbits + n_foxes + n_stones}\n')
 
         while (n_rabbits > 0):
-            x = randint(0, r - 1)
-            y = randint(0, c - 1)
+            x, y = gen_random_coords(r, c)
             if matrix[x][y] == -1:
                 instance_file.write(f'COELHO {x} {y}\n')
                 n_rabbits -= 1
 
         while (n_foxes > 0):
-            x = randint(0, r - 1)
-            y = randint(0, c - 1)
+            x, y = gen_random_coords(r, c)
             if matrix[x][y] == -1:
                 instance_file.write(f'RAPOSA {x} {y}\n')
                 n_foxes -= 1
 
         while (n_stones > 0):
-            x = randint(0, r - 1)
-            y = randint(0, c - 1)
+            x, y = gen_random_coords(r, c)
             if matrix[x][y] == -1:
                 instance_file.write(f'ROCHA {x} {y}\n')
                 n_stones -= 1
