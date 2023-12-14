@@ -52,28 +52,28 @@ def plot_sequential(measures):
 
     fig.savefig(f'{getcwd()}/sequential.svg', format='svg')
 
+
 def main():
 
-    buffer = [1, 2, 3, 4, 8]
+    buffer = [2, 3, 4]
 
-    instance_1 = [0.001, 0.001, 0.001, 0.001, 0.001]
+    instance_1 = [0.004, 0.004, 0.004]
     plot_by_instance(buffer, instance_1, 'instance_1.txt')
 
-    instance_2 = [0.07, 0.1, 0.15, 0.2, 0.5]
+    instance_2 = [0.06, 0.058, 0.065]
     plot_by_instance(buffer, instance_2, 'instance_2.txt')
 
-    instance_3 = [1, 1.45, 2.1, 2.6, 6.5]
+    instance_3 = [0.75, 0.7, 0.68]
     plot_by_instance(buffer, instance_3, 'instance_3.txt')
     
-    instance_4 = [140, 155, 175, 187, 300]
+    instance_4 = [115, 105, 100]
     plot_by_instance(buffer, instance_4, 'instance_4.txt')
 
     plot_time(buffer, instance_1, instance_2, instance_3, instance_4)
 
-    sequential = [0.001, 0.07, 1, 140]
+    sequential = [0.001, 0.07, 1, 150]
     plot_sequential(sequential)
 
 
 if __name__ == '__main__':
     main()
-
