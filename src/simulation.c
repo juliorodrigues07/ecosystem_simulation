@@ -1,5 +1,3 @@
-#include <omp.h>
-#include <time.h>
 #include "include/simulation.h"
 
 int calculate_next_position (int g, int x, int y, int p)
