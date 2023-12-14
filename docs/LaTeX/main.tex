@@ -129,7 +129,7 @@ A assinatura da função responsável pelo movimento de cada coelho é definida 
 A enumeração das posições possíveis é realizada na função \emph{empty\_cells}, enquanto o índice que corresponde à posição no vetor \emph{adj} que contém a posição vazia adjacente selecionada é dado pela fórmula especificada no trabalho (\textbf{(G + X + Y) (mod P)}) na função \emph{calculate\_next\_position}. Por exemplo, para um coelho na geração 2 e na posição (1, 0) em que as entre as posições adjacentes, (1, 1) está ocupada e (0, 0) e (2, 0) estão vazias, o \emph{array} \emph{adj} (este é inicializado com valores -1) será definido da seguinte forma:
 \begin{align*}
     \{0, 2, -1, -1\} & \rightarrow \{NORTE, SUL\}\\
-    i & = 2 + 1 + 0 \hspace{0.2cm}(mod 2) = 1\\
+    i & = 2 + 1 + 0 \hspace{0.2cm}(mod \hspace{0.2cm}2) = 1\\
     adj[i] & = adj[1] = 2 = SUL
 \end{align*}
 
@@ -139,7 +139,7 @@ Calculada a próxima posição do coelho, se existir uma posição vazia adjacen
 
 A assinatura da função responsável pelo movimento de cada raposa é definida como \emph{move\_foxes}. De forma similar à movimentação de coelhos, a matriz \textbf{A} é percorrida desta vez analisando as posições em que existem coelhos ou vazias. 
 
-Dado que uma raposa existe em determinada posição \textbf{X} e \emph{Y}, as células adjacentes que contém coelho (horizontal e vertical) são numeradas de 0 à 3 em um \emph{array} auxiliar \emph{eat} (\{0, 1, 2, 3\} \(\rightarrow\) \{NORTE, LESTE, SUL, OESTE\}) respeitando os limites do espaço da matriz e a variável acumuladora (\emph{available\_to\_eat}) do número de posições disponíveis também é incrementado. Caso não haja nenhum coelho nas células adjacentes, o mesmo processo de enumeração é realizado, desta vez com o \emph{array} auxiliar sendo \emph{adj} e a variável acumuladora \emph{empty}.
+Dado que uma raposa existe em determinada posição \textbf{X} e \textbf{Y}, as células adjacentes que contém coelho (horizontal e vertical) são numeradas de 0 à 3 em um \emph{array} auxiliar \emph{eat} (\{0, 1, 2, 3\} \(\rightarrow\) \{NORTE, LESTE, SUL, OESTE\}) respeitando os limites do espaço da matriz e a variável acumuladora (\emph{available\_to\_eat}) do número de posições disponíveis também é incrementada. Caso não haja nenhum coelho nas células adjacentes, o mesmo processo de enumeração é realizado, desta vez com o \emph{array} auxiliar sendo \emph{adj} e a variável acumuladora \emph{empty}.
 
 Calculada a próxima posição da raposa, se existir uma posição adjacente que contém um coelho, esta é movida na matriz \textbf{A'} carregando seus atributos consigo na função, consequentemente eliminando o coelho e redefinindo seu atributo de fome como zero. Caso não exista uma posição adjacente que contém um coelho, mas sim uma posição adjacente vazia, esta também é movida na matriz \textbf{A'} carregando seus atributos.
 
@@ -172,7 +172,7 @@ O restante do tempo de processamento é dividido entre as funções de movimento
 
 Como as funções de cópia e atualização das matrizes e de evolução do sistema juntas correspondem em média a aproximadamente 60\% do tempo total de processamento com as instâncias geradas, estas foram as primeiras analisadas como oportunidades para paralelização. Um aspecto em comum entre todas estas funções, é que estas executam apenas operações pontuais em cada célula das matrizes sem que exista quaisquer dependências de dados em relação a quaisquer outras células da matriz (problema embaraçosamente paralelo).
 
-Neste caso, podemos realizar uma decomposição simples de domínio por linhas, colunas, submatrizes ou até mesmo escalonamento de célula por célula para cada \emph{thread} na tentativa de atender requisitos como balanceamento de carga. No caso da função de cópia por exemplo, dado que existe um processador com \(r \times c\) núcleos, seria possível realizar a cópia de todos os elementos ao mesmo tempo, com cada \(r \times c\) \emph{threads} realizando a atribuição de um único elemento da matriz.
+Neste caso, podemos realizar uma decomposição simples de domínio por linhas, colunas, submatrizes ou até mesmo o escalonamento de célula por célula para cada \emph{thread} na tentativa de atender requisitos como balanceamento de carga. No caso da função de cópia por exemplo, dado que existe um processador com \(r \times c\) núcleos, seria possível realizar a cópia de todos os elementos ao mesmo tempo, com cada \(r \times c\) \emph{threads} realizando a atribuição de um único elemento da matriz.
 
 Por fim, foram analisadas as funções de movimentação dos animais que, embora possuam a resolução de conflitos no caso de dois ou mais tentarem mover-se para a mesma posição, a operação de movimento como um todo possui dependência de dados na análise e atribuições (movimentar um animal corresponde a um cadeia de atribuições condicionadas, e por isso não é uma instrução atômica) entre as células adjacentes de toda posição (X, Y) analisada. Estas dependências levam a criação de seções críticas em certas porções dos códigos responsáveis pela movimentação dos animais para serem executadas de forma sequencial entre as \emph{threads}.
 
@@ -214,9 +214,10 @@ Os parâmetros de execução podem e devem ser alterados no arquivo \emph{Makefi
 
 \section{Análise de Resultados}
 
-Os resultados obtidos foram, no geral, bastante distantes das expectativas. Em vez de apresentar reduções nos tempos de execução, o aumento do número de \emph{threads} apenas elevou os resultados mensurados. O motivo por trás deste comportamento atípico observado na execução paralela do programa ainda não foi descoberto. Todos os testes foram realizados em um computador com processador Intel© Core™ i5-8265U CPU que possui 4 núcleos, 8 \emph{threads} (Hyper-threading) e frequência base 1,60 GHz.
+Os resultados obtidos foram, no geral, bastante condizentes com as expectativas, apresentando reduções nos tempos de execução, conforme o aumento do número de \emph{threads}. Todos os testes foram realizados em um computador com processador Intel© Core™ i5-8265U CPU que possui 4 núcleos, 8 \emph{threads} (Hyper-threading) e frequência base 1,60 GHz.
 
 As informações sobre cada instância gerada para teste são apresentadas na Tabela \ref{tab:exampleTab1}. Os parâmetros \emph{rabbits}, \emph{foxes} e \emph{stones} correspondem à porcentagem do total de posições na matriz ocupadas pelo objeto.
+\vspace{-0.5cm}
 \begin{table}[H]
     \centering
     \caption{Parâmetros das Instâncias de Teste}
@@ -239,63 +240,63 @@ As informações sobre cada instância gerada para teste são apresentadas na Ta
 \vspace*{-0.5cm}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1.1\textwidth]{Images/sequential.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=1.1\textwidth]{Images/sequential.png}
+    \vspace*{-1cm}
     \caption{Tempo de execução sequencial}
     \label{fig:map1}
 \end{figure}
 
-Na Figura \ref{fig:map1}, podemos observar que o tempo de execução cresce rapidamente conforme os tamanhos do ecossistema crescem (dimensões da matriz), um comportamento dentro do esperado.
-
-Partindo para os resultados obtidos com execuções em paralelo, foram realizados vários testes com quatro valores distintos para o número de \emph{threads} com todas as instâncias. Foram realizados testes com 2, 3 e 4 \emph{threads}, além também do valor máximo (8) para observar como o programa OpenMP lida com a tecnologia de \emph{Hyper-threading} por curiosidade.
+Na Figura \ref{fig:map1}, podemos observar que o tempo de execução cresce rapidamente conforme os tamanhos do ecossistema crescem (dimensões da matriz), um comportamento dentro do esperado. Já para os resultados obtidos com execuções em paralelo, foram realizados vários testes com três valores distintos para o número de \emph{threads} com todas as instâncias (\{2, 3, 4\}).
 
 Para a primeira instância, como a dimensão do ecossistema é relativamente pequena, não ocorreram diferenças significativas nos tempos de execução mensurados. O gráfico que apresentam as curvas de tempo de processamento para tal instância é apresentado na Figura \ref{fig:map2}.
 
-Para o restante das instância, é possível observar um padrão quanto ao aumento de número de \emph{threads} e o tempo de execução associado. No entanto, os resultados obtidos foram inesperados como mencionado anteriormente, com o tempo de execução aumentando linearmente (diretamente proporcional ao número de \emph{threads}). Os gráficos que apresentam as curvas de tempo de processamento para tais instâncias são apresentados na Figura \ref{fig:map3}, \ref{fig:map4} e \ref{fig:map5}. Por fim, podemos observar na Figura \ref{fig:map6} o quadro geral das execuções sequenciais e em paralelo, com diferentes números de \emph{threads} e instâncias distintas.
+Para o restante das instâncias, é possível observar um padrão de descréscimo do tempo de execução em razão do aumento do número de \emph{threads}. No entanto, podemos observar nitidamente um \emph{speed up} sublinear, este que poderia ser explicado pela presença de três regiões críticas presentes na movimentação de coelhos e raposas no total, o que torna a movimentação em si uma operação sequencial, colocando \emph{threads} em ociosidade a maior parte do tempo em que o programa está em execução.
+
+Considerando somente os testes com a instância de maior relevância para os resultados (\emph{instance\_4.txt}), o \emph{speed up} obtido com 4 \emph{threads} foi de aproximadamente 1,5\(\times\) em relação ao tempo de execução sequencial. Os gráficos que apresentam as curvas de tempo de processamento para tais instâncias são apresentados na Figura \ref{fig:map3}, \ref{fig:map4} e \ref{fig:map5}. Por fim, podemos observar na Figura \ref{fig:map6} o quadro geral das execuções sequenciais e em paralelo, com diferentes números de \emph{threads} e instâncias distintas.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{Images/instance_1.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=0.95\textwidth]{Images/i1.png}
+    \vspace*{-0.5cm}
     \caption{Tempos de execução com a instância \emph{instance\_1.txt}}
     \label{fig:map2}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{Images/instance_2.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=0.9\textwidth]{Images/i2.png}
+    \vspace*{-0.2cm}
     \caption{Tempos de execução com a instância \emph{instance\_2.txt}}
     \label{fig:map3}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{Images/instance_3.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=0.9\textwidth]{Images/i3.png}
+    \vspace*{-0.2cm}
     \caption{Tempos de execução com a instância \emph{instance\_3.txt}}
     \label{fig:map4}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{Images/instance_4.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=0.9\textwidth]{Images/i4.png}
+    \vspace*{-0.5cm}
     \caption{Tempos de execução com a instância \emph{instance\_4.txt}}
     \label{fig:map5}
 \end{figure}
 
-\vspace*{-1cm}
+\vspace*{-0.8cm}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1.1\textwidth]{Images/parallel.pdf}
-    \vspace*{-1.5cm}
+    \includegraphics[width=1\textwidth]{Images/parallel.png}
+    \vspace*{-0.8cm}
     \caption{Tempos de execução variando número de \emph{threads} e entradas}
     \label{fig:map6}
 \end{figure}
 
 \section{Limitações}
 
-Como principais limitações, é nítido a desvantagem em tempo de processamento entre execuções conforme a quantidade de \emph{threads} aumenta. Seria necessário uma análise mais detalhada de como as diretivas OpenMP estão sendo utilizadas, quais otimizações podem ser feitas para melhorar os resultados ou até se existem erros de implementação que estão provocando a deterioração no tempo de execução.
+Como principais limitações, é nítido que o \emph{speed up} sublinear pode ser analisado mais a fundo, na tentativa de eliminar regiões críticas e otimizar certas porções do código. Seria necessário uma análise mais detalhada de como as diretivas OpenMP estão sendo utilizadas, quais otimizações podem ser feitas para melhorar os resultados ou até se existem erros de implementação que estão provocando uma melhora apenas discreta no tempo de execução.
 
 Além disso, também pode ser de grande relevância analisar como os dados sobre o ecossistema são armazenados. Nesta implementação, por questões de simplificação são utilizadas duas matrizes para manipulá-lo e representá-lo. No entanto, idealmente deveria ser utilizada somente uma matriz para realizar todas as operações, ou até mesmo uma lista, que neste caso, armazenaria somente as posições do ecossistema em que existe um objeto associado (posições vazias não seriam armazenadas).
 
@@ -316,6 +317,7 @@ Com este exemplo didático, podemos observar de forma nítida, a complexidade po
     \item Profiling Programs With prof, gprof, and tcov: \url{https://docs.oracle.com/cd/E19059-01/stud.10/819-0493/OtherTools.html};
     \item Unions: \url{https://www.learn-c.org/en/Unions};
     \item Working with a union of structs in C: \url{https://stackoverflow.com/questions/20752551/working-with-a-union-of-structs-in-c};
+    \item How to use gettimeofday function in C language?: \url{https://linuxhint.com/gettimeofday_c_language/};
     \item Material disponível no SIGAA na disciplina de Computação Paralela.
 \end{itemize}
 
