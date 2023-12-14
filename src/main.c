@@ -1,4 +1,4 @@
-#include <time.h>
+#include <sys/time.h>
 #include "include/data_management.h"
 #include "include/simulation.h"
 
@@ -22,7 +22,9 @@ int main (int argc, char **argv)
 
     int i;
     print_state(config, 0);
-    clock_t begin = clock();
+    struct timeval begin, end;
+    gettimeofday(&begin, NULL);
+
     for (i = 0; i < config->n_gen; i++)
     {
         // Tries to move all rabbits solving any possible conflicts and updates the source matrix
@@ -40,10 +42,11 @@ int main (int argc, char **argv)
         copy_state(config, space_copy);
         print_state(config, i + 1);
     }
-    clock_t end = clock();
-
+    gettimeofday(&end, NULL);
+    double total_time = (end.tv_sec - begin.tv_sec) + (end.tv_usec - begin.tv_usec) / 1000000.0;
+    
     print_result(config, config->n_gen - i);
-    printf("\nProcessing time: %0.3lfs\n", (double) (end - begin) / CLOCKS_PER_SEC);
+    printf("\nProcessing time: %0.3lfs\n", total_time);    
 
     // Clean up
     for (i = 0; i < config->r; i++)
